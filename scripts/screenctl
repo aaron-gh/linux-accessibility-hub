@@ -1,0 +1,44 @@
+#!/bin/sh
+if [ -z $1 ];then
+echo "usage: $0 on|off [forceintel|forcesys]"
+exit 1
+fi
+if intel_backlight > /dev/null 2>/dev/null;then
+export intel_avail=1
+else
+export intel_avail=0
+fi
+if [ "$2" == "forceintel" ];then
+export intel_avail=1
+fi
+if [ $intel_avail == 1 ];then
+case "$1" in
+"off")
+intel_backlight 0 > /dev/null 2>/dev/null
+;;
+"on")
+intel_backlight 100 > /dev/null 2>/dev/null
+;;
+esac
+fi
+if [ "$2" == "forcesys" ];then
+export intel_avail=0
+fi
+if [ $intel_avail == 0 ];then
+cd /sys/class/backlight
+export counter=1
+for adapter in `ls`;do
+cd $adapter
+export max=`cat max_brightness`
+cd ..
+export counter=$(($counter+1))
+case "$1" in
+"off")
+echo 0 > /sys/class/backlight/$adapter/brightness
+;;
+"on")
+echo $max>/sys/class/backlight/$adapter/brightness
+;;
+esac
+done
+fi

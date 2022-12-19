@@ -1,0 +1,89 @@
+#!/bin/zsh
+export cmd=$1
+export reader=$2
+export inittype=$3
+if [ -z $reader ];then
+export reader=fenrir
+fi
+if [ -z $inittype ];then
+export inittype="systemd"
+fi
+case "$reader" in
+espeakup)
+if lsmod|grep -qw speakup_soft;then
+true
+else
+modprobe speakup_soft
+fi
+export services="espeakup"
+;;
+fenrir)
+if echo $inittype|grep -qw systemd;then
+export services="speech-dispatcherd fenrirscreenreader"
+fi
+if echo $inittype|grep -qw init;then
+export services="speechd fenrirscreenreader"
+fi
+if echo $inittype|grep -qw openrc;then
+export services="fenrirscreenreader"
+if [ -e /etc/fenrirscreenreader/settings/settings.openrc.conf ];then
+mv /etc/fenrirscreenreader/settings/settings.openrc.conf /etc/fenrirscreenreader/settings/settings.conf
+fi
+fi
+;;
+*)
+echo selected reader $reader not supported
+exit 1
+;;
+esac
+case "$inittype" in
+init)
+case "$cmd" in
+restart|start|stop)
+for s in `echo -n $services`;do
+if [ -e /etc/init.d/$s ];then
+/etc/init.d/$s $cmd
+fi
+if [ -e /etc/rc.d/$s ];then
+/etc/rc.d/$s $cmd
+fi
+done
+;;
+*)
+echo invalid command $cmd
+exit 2
+;;
+esac
+;;
+openrc)
+case "$cmd" in
+restart|start|stop)
+for s in `echo -n $services`;do
+rc-service $s $cmd
+done
+;;
+*)
+echo invalid command $cmd
+exit 2
+;;
+esac
+;;
+systemd)
+case "$cmd" in
+restart|start|stop)
+for s in `echo -n $services`;do
+systemctl --no-block $cmd $s
+done
+;;
+*)
+echo invalid command $cmd
+exit 2
+;;
+esac
+;;
+*)
+echo selected init type $inittype not supported
+exit 1
+;;
+esac
+
